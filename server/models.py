@@ -14,7 +14,7 @@ convention = {
 
 metadata = MetaData(naming_convention=convention)
 
-db = SQLAlchemy(metadata=metadata)
+db = SQLAlchemy(metadata=metadata, engine_options={"echo": True})
 
 
 class Planet(db.Model, SerializerMixin):
@@ -25,9 +25,13 @@ class Planet(db.Model, SerializerMixin):
     distance_from_earth = db.Column(db.Integer)
     nearest_star = db.Column(db.String)
 
-    # Add relationship
+    # missions, scientists
+    missions = db.relationship("Mission", backref="planet", cascade="delete")
+    scientists = association_proxy("missions", "scientist")
+
 
     # Add serialization rules
+    serialize_rules = ("-missions.planet", "-mission.scientist",)
 
 
 class Scientist(db.Model, SerializerMixin):
@@ -37,11 +41,25 @@ class Scientist(db.Model, SerializerMixin):
     name = db.Column(db.String)
     field_of_study = db.Column(db.String)
 
-    # Add relationship
-
+    # missions, planets
+    missions = db.relationship("Mission", backref="scientist", cascade="delete")
+    planets = association_proxy("missions", "planet")
+    
     # Add serialization rules
-
+    serialize_rules = ("-missions.planet", "-mission.scientist",)
+    
     # Add validation
+    @validates('name')
+    def validate_name(self, key, name):
+        if not name:
+            raise ValueError("Name cannot be blank")
+        return name
+    
+    @validates('field_of_study')
+    def validate_field_of_study(self, key, field_of_study):
+        if not value:
+            raise ValueError("Field of study cannot be blank")
+        return value
 
 
 class Mission(db.Model, SerializerMixin):
@@ -49,10 +67,26 @@ class Mission(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+    scientist_id = db.Column(db.Integer, db.ForeignKey('scientits.id'))
+    plant_id = db.Column(db.Integer, db.ForeignKey('planets.id'))
 
-    # Add relationships
+    # scientist(belongs_to, assoc. method created nby backref), planet (belongs_to, assoc. method created nby backref)
 
     # Add serialization rules
+    @validates("name")
+    def validate_name(self, key, name):
+        if not name:
+            raise ValueError("Name cannot be blank")
+        return name
+    
+    @validates("scientist_id", "planet_id")
+    def validate_foreign_keys(self, key, value):
+        if not value:
+            raise ValueError("Scientist id, and planet id cannot be blank")
+        return value
+    
+
+    
 
     # Add validation
 
